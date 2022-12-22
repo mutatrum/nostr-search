@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+
+<head>
+    <title>Nostr Contact Search</title>
+    <style>
+        *,
+        html {
+            margin: 4px;
+            padding: 0;
+            border: 0;
+        }
+
+        html {
+            width: 100%;
+            height: 100%;
+        }
+
+        body {
+            width: 100%;
+            height: 100%;
+            position: relative;
+            background-color: rgb(236, 152, 42);
+        }
+
+        .center {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: "Trebuchet MS", Helvetica, sans-serif;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 72px;
+        }
+
+        input, button {
+            font-size: 36px;
+            padding: 0 10px 0 10px;
+        }
+
+        tr {
+          text-align: center
+        }
+
+        #data {
+          display: flex;
+          flex-direction: column;
+        }
+    </style>
+
+    <script>
+        function makeSearch(event) {
+          const search = event.target.elements.search.value
+          if (search && search.length > 1) {
+            fetch(`/api/search?search=${search}`)
+              .then(res => res.json())
+              .then(out => showResults(out))
+              .catch(err => { throw err });
+          }
+          return false
+        }
+
+        function showResults(result) {
+          let col = ['pubkey'];
+          for (let i = 0; i < result.length; i++) {
+            for (let key in result[i].metadata) {
+              if (col.indexOf(key) === -1) {
+                col.push(key);
+              }
+            }
+          }
+
+          const table = document.createElement("table");
+          let tr = table.insertRow(-1);                   // table row.
+
+          for (let i = 0; i < col.length; i++) {
+            let th = document.createElement("th");      // table header.
+            th.innerHTML = col[i];
+            tr.appendChild(th);
+          }
+
+          for (let i = 0; i < result.length; i++) {
+
+            tr = table.insertRow(-1);
+
+            tr.insertCell(-1).innerHTML = result[i].pubkey
+
+            for (let j = 1; j < col.length; j++) {
+              let tabCell = tr.insertCell(-1);
+              let value = result[i].metadata[col[j]];
+              tabCell.innerHTML = value ? value : "&nbsp;";
+            }
+          }
+
+          const dataDiv = document.getElementById("data")
+
+          dataDiv.innerHTML = ""
+          dataDiv.appendChild(table)
+        }
+    </script>
+</head>
+
+<body>
+    <div class="center">
+        <h1>Nostr Contact Search</h1>
+
+        <form name="search" onsubmit="return makeSearch(event)" >
+          <input type="text" id="search" name="search"><button type="submit">Search</button>
+        </form>
+
+        <div id="data"></div>
+    </div>
+</body>
+
+</html>
