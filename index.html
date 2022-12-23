@@ -45,7 +45,12 @@
         }
 
         tr {
-          text-align: center
+          text-align: center;
+        }
+
+        img {
+          width: 64px;
+          height: 64px;
         }
 
         #data {
@@ -64,6 +69,14 @@
               .catch(err => { throw err });
           }
           return false
+        }
+
+        function renderValue(column, value) {
+          if (!value) return "&nbsp;"
+          if (value.startsWith("data:image/") || column === 'picture') {
+            return `<img src="${value}" />`
+          }
+          return value
         }
 
         function showResults(result) {
@@ -94,7 +107,7 @@
             for (let j = 1; j < col.length; j++) {
               let tabCell = tr.insertCell(-1);
               let value = result[i].metadata[col[j]];
-              tabCell.innerHTML = value ? value : "&nbsp;";
+              tabCell.innerHTML = renderValue(col[j], value)
             }
           }
 
