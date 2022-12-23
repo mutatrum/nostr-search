@@ -71,22 +71,32 @@
           return false
         }
 
-        function renderValue(column, value) {
-          if (!value) return "&nbsp;"
+        function renderValue(element, column, value) {
+          if (!value) {
+            element.innerHTML = "&nbsp;"
+            return
+          }
           if (value.startsWith("data:image/")) {
-            return `<img src="${value}" />`
+            var img = document.createElement("img")
+            img.setAttribute("src", value)
+            element.append(img)
+            return
           }
           if (column === 'picture') {
             try {
-              return `<img src="${new URL(value)}" />`
+              var img = document.createElement("img")
+              img.setAttribute("src", value)
+              element.append(img)
+              return
             } catch(error) {
 
             }           
           }
           if (value.length > 100) {
-            return `${value.substring(0, 100)}...`
+            element.innerText = `${value.substring(0, 100)}...`
+            return
           }
-          return value
+          element.innerText = value
         }
 
         function showResults(result) {
@@ -104,7 +114,7 @@
 
           for (let i = 0; i < col.length; i++) {
             let th = document.createElement("th");      // table header.
-            th.innerHTML = col[i];
+            th.innerText = col[i];
             tr.appendChild(th);
           }
 
@@ -112,18 +122,18 @@
 
             tr = table.insertRow(-1);
 
-            tr.insertCell(-1).innerHTML = result[i].pubkey
+            tr.insertCell(-1).innerText = result[i].pubkey
 
             for (let j = 1; j < col.length; j++) {
               let tabCell = tr.insertCell(-1);
               let value = result[i].metadata[col[j]];
-              tabCell.innerHTML = renderValue(col[j], value)
+              renderValue(tabCell, col[j], value)
             }
           }
 
           const dataDiv = document.getElementById("data")
 
-          dataDiv.innerHTML = ""
+          dataDiv.innerText = ""
           dataDiv.appendChild(table)
         }
     </script>
