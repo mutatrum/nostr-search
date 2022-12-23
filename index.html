@@ -73,8 +73,18 @@
 
         function renderValue(column, value) {
           if (!value) return "&nbsp;"
-          if (value.startsWith("data:image/") || column === 'picture') {
+          if (value.startsWith("data:image/")) {
             return `<img src="${value}" />`
+          }
+          if (column === 'picture') {
+            try {
+              return `<img src="${new URL(value)}" />`
+            } catch(error) {
+
+            }           
+          }
+          if (value.length > 100) {
+            return `${value.substring(0, 100)}...`
           }
           return value
         }
