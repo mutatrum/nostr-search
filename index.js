@@ -1,16 +1,20 @@
 const http = require("http");
 const fs = require('fs').promises;
-const {RelayPool} = require('nostr');
+const { RelayPool } = require('nostr');
+const { bech32 } = require('bech32')
 
 const damus = "wss://relay.damus.io"
 const scsi = "wss://nostr-pub.wellorder.net"
 const rocks = "wss://nostr.rocks"
-const relays = [damus, scsi, rocks]
-
+const semisol = "wss://nostr-pub.semisol.dev"
+const zebedee = "wss://nostr.zebedee.cloud"
+const relays = [damus, scsi, rocks, semisol, zebedee]
 const pool = RelayPool(relays)
 
-const storage = {}
-const keys = []
+const HOST = "0.0.0.0"
+const PORT = 8080
+
+const STORAGE = {}
 
 pool.on('open', relay => {
   relay.subscribe("subid", {kinds:[0]})
@@ -20,33 +24,36 @@ pool.on('eose', relay => {
   relay.close()
 });
 
-pool.on('event', (relay, sub_id, ev) => {
-  const pubkey = ev.pubkey
+pool.on('event', (relay, sub_id, event) => {
+  const pubkey = event.pubkey
 
-  const oldEvent = storage[pubkey]
-  if (oldEvent && oldEvent.created_at > ev.created_at) {
+  const previousEvent = STORAGE[pubkey]
+  if (previousEvent && previousEvent.created_at > event.created_at) {
     return
   }
   try {
-    const content = JSON.parse(ev.content)
 
-    storage[pubkey] = content
+    var metadata = JSON.parse(event.content);
+    metadata.npub = bech32.encode('npub', bech32.toWords(fromHexString(pubkey)))
 
-    return;
+    STORAGE[pubkey] = metadata;
+
+    if (!isCreatingNewIndex) {
+      isCreatingNewIndex = true
+      setTimeout(createNewWorker, 10000)
+    }
   } catch(syntaxError) {
-
+    // console.log(event.content)
   }
 });
-
-// setInterval(() => console.log(`Number of keys: ${Object.keys(storage).length}`), 60000)
 
 setInterval(() => pool.send(JSON.stringify({ event: "ping" })), 10000)
 
 fs.readFile(__dirname + "/index.html")
     .then(contents => {
         indexFile = contents;
-        server.listen(port, host, () => {
-            console.log(`Server is running on http://${host}:${port}`);
+        server.listen(PORT, HOST, () => {
+            console.log(`Server is running on http://${HOST}:${PORT}`);
         });
     })
     .catch(err => {
@@ -55,25 +62,29 @@ fs.readFile(__dirname + "/index.html")
     });
 
 
-const host = "0.0.0.0"
-const port = 8080
+const { Worker } = require('worker_threads')
 
-function hasValue(pubkey, key) {
-  if (pubkey.indexOf(key) != -1) {
-    return true
-  } else {
-    const metadata = storage[pubkey]
-    for (var value of Object.values(metadata)) {
-      if (value && value.indexOf(key) != -1) {
-        return true
-      }
-    }
-  }
+let idxWorker = null
+
+var isCreatingNewIndex = true
+createNewWorker()
+    
+function createNewWorker() {
+  const worker = new Worker('./search.js', { workerData: { storage: STORAGE } })
+  worker.on('error', (err) => { throw err })
+  worker.once('message', (data) => {
+
+    const prevWorker = idxWorker
+    idxWorker = worker;
+    isCreatingNewIndex = false
+
+    if (prevWorker) prevWorker.unref()
+  })
 }
 
 const requestListener = function (req, res) {
   console.log(`${req.method} ${req.url}`)
-  const url = new URL(req.url, `https://${host}/`)
+  const url = new URL(req.url, `https://${HOST}/`)
   if (url.pathname === '/' && req.method === 'GET') {
     res.setHeader("Content-Type", "text/html")
     res.writeHead(200)
@@ -85,22 +96,45 @@ const requestListener = function (req, res) {
     if (key) {
       res.setHeader("Content-Type", "application/json")
       res.writeHead(200)
-      res.write("[")
-      var count = 0
+
       const start = Date.now()
-      for (var pubkey in storage) {
-        if (hasValue(pubkey, key)) {
+
+      idxWorker.once('message', ({result}) => {
+
+        res.write("[")
+        var count = 0
+        for (var entry of result) {
+          var pubkey = entry.ref
           if (count != 0) res.write(",")
-          res.write(JSON.stringify({pubkey: pubkey, metadata: storage[pubkey] }))
+          res.write(JSON.stringify({pubkey: pubkey, metadata: STORAGE[pubkey] }))
           count++
+          if (count === 100) break
         }
-        if (count === 10) break
-      }
-      res.end("]")
-      console.log(`Search: "${key}" yields ${count} results in ${Date.now() - start}ms`)
+        res.write("]")
+       
+        res.end();
+
+        console.log(`Search: "${key}" yields ${count} results in ${Date.now() - start}ms`)
+      })
+
+      idxWorker.postMessage({key: key})
+
       return
     }
   }
   res.writeHead(404).end();
 };
+
+function fromHexString(str) {
+  if (str.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(str)) {
+    return null;
+  }
+  let buffer = new Uint8Array(str.length / 2);
+  for (let i = 0; i < buffer.length; i++) {
+    buffer[i] = parseInt(str.substr(2 * i, 2), 16);
+  }
+  return buffer;
+}
+
 const server = http.createServer(requestListener);
+

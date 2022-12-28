@@ -9,6 +9,8 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
+    "bech32": "^2.0.0",
+    "lunr": "^2.3.9",
     "nostr": "github:jb55/nostr-js",
     "ws": "^8.11.0"
   }

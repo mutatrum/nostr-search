@@ -100,7 +100,7 @@
         }
 
         function showResults(result) {
-          let col = ['pubkey'];
+          let col = ['pubkey', 'npub'];
           for (let i = 0; i < result.length; i++) {
             for (let key in result[i].metadata) {
               if (col.indexOf(key) === -1) {
