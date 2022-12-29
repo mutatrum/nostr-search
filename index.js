@@ -1,3 +1,6 @@
+const dotenv = require('dotenv');
+dotenv.config();
+
 const http = require("http");
 const fs = require('fs').promises;
 const { RelayPool } = require('nostr');
@@ -11,8 +14,8 @@ const zebedee = "wss://nostr.zebedee.cloud"
 const relays = [damus, scsi, rocks, semisol, zebedee]
 const pool = RelayPool(relays)
 
-const HOST = "0.0.0.0"
-const PORT = 8080
+const HOST = process.env.HOST
+const PORT = process.env.PORT
 
 const STORAGE = {}
 
@@ -40,7 +43,7 @@ pool.on('event', (relay, sub_id, event) => {
 
     if (!isCreatingNewIndex) {
       isCreatingNewIndex = true
-      setTimeout(createNewWorker, 10000)
+      setTimeout(createNewWorker, process.env.REBUILD)
     }
   } catch(syntaxError) {
     // console.log(event.content)
@@ -78,8 +81,10 @@ function createNewWorker() {
     idxWorker = worker;
     isCreatingNewIndex = false
 
-    prevWorker.postMessage('exit')
-    if (prevWorker) prevWorker.unref()
+    if (prevWorker) {
+      prevWorker.postMessage('exit')
+      prevWorker.unref()
+    }
   })
 }
 
