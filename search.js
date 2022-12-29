@@ -44,10 +44,13 @@ var idx = lunr(function() {
 
 console.log(`Building index with ${Object.keys(storage).length} keys took ${Date.now() - start}ms ${Math.round(JSON.stringify(idx).length / 1024 / 1024)}mb`)
 
-parentPort.on('message', ({key}) => parentPort.postMessage({result: idx.search(key)}))
-
-parentPort.on('exit', () => {
-  idx = null
+parentPort.on('message', ({type, key}) => {
+  if (type === 'search') {
+    parentPort.postMessage({result: idx.search(key)})
+  }
+  if (type === 'exit') {
+    idx = null
+  }
 })
 
 parentPort.postMessage('ready')

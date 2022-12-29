@@ -82,7 +82,7 @@ function createNewWorker() {
     isCreatingNewIndex = false
 
     if (prevWorker) {
-      prevWorker.postMessage('exit')
+      prevWorker.postMessage({type: 'exit'})
       prevWorker.unref()
     }
   })
@@ -123,7 +123,7 @@ const requestListener = function (req, res) {
         console.log(`Search: "${key}" yields ${count} results in ${Date.now() - start}ms`)
       })
 
-      idxWorker.postMessage({key: key})
+      idxWorker.postMessage({type: 'search', key: key})
 
       return
     }
