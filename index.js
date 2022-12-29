@@ -4,14 +4,9 @@ dotenv.config();
 const http = require("http");
 const fs = require('fs').promises;
 const { RelayPool } = require('nostr');
-const { bech32 } = require('bech32')
+const { pubkeytonpub, npubtopubkey } = require('./npub')
 
-const damus = "wss://relay.damus.io"
-const scsi = "wss://nostr-pub.wellorder.net"
-const rocks = "wss://nostr.rocks"
-const semisol = "wss://nostr-pub.semisol.dev"
-const zebedee = "wss://nostr.zebedee.cloud"
-const relays = [damus, scsi, rocks, semisol, zebedee]
+const relays = process.env.RELAYS.split(',')
 const pool = RelayPool(relays)
 
 const HOST = process.env.HOST
@@ -36,10 +31,7 @@ pool.on('event', (relay, sub_id, event) => {
   }
   try {
 
-    var metadata = JSON.parse(event.content);
-    metadata.npub = bech32.encode('npub', bech32.toWords(fromHexString(pubkey)))
-
-    STORAGE[pubkey] = metadata;
+    STORAGE[pubkey] = JSON.parse(event.content);
 
     if (!isCreatingNewIndex) {
       isCreatingNewIndex = true
@@ -105,6 +97,23 @@ const requestListener = function (req, res) {
 
       const start = Date.now()
 
+      if (key in STORAGE) {
+        const pubkey = key
+        res.write("[")
+        res.write(JSON.stringify({pubkey: pubkey, npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey] }))
+        res.write("]")
+        res.end();
+        return
+      }
+      const pubkey = npubtopubkey(key)
+      if (pubkey && pubkey in STORAGE) {
+        res.write("[")
+        res.write(JSON.stringify({pubkey: pubkey, npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey] }))
+        res.write("]")
+        res.end();
+        return
+      }
+
       idxWorker.once('message', ({result}) => {
 
         res.write("[")
@@ -112,7 +121,7 @@ const requestListener = function (req, res) {
         for (var entry of result) {
           var pubkey = entry.ref
           if (count != 0) res.write(",")
-          res.write(JSON.stringify({pubkey: pubkey, metadata: STORAGE[pubkey] }))
+          res.write(JSON.stringify({pubkey: pubkey, npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey] }))
           count++
           if (count === 100) break
         }
