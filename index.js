@@ -78,6 +78,7 @@ function createNewWorker() {
     idxWorker = worker;
     isCreatingNewIndex = false
 
+    prevWorker.postMessage('exit')
     if (prevWorker) prevWorker.unref()
   })
 }
