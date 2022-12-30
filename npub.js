@@ -11,7 +11,7 @@ function pubkeytonpub(pubkey) {
 }
 
 function npubtopubkey(npub) {
-  if (!npub.startsWith('npub')) return null
+  if (!npub.startsWith('npub') || npub.length < 60) return null
   return toHexString(bech32.fromWords(bech32.decode(npub).words))
 }
 

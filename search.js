@@ -34,7 +34,7 @@ for (var pubkey in storage) {
 }
 
 var idx = lunr(function() {
-  // this.tokenizer.separator = ''
+  // this.tokenizer.separator = '/[\s\-]+/'
   this.use(filterImageData)
   this.ref('pubkey')
   for (var key of columns) this.field(key)
