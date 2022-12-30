@@ -53,6 +53,11 @@
           height: 64px;
         }
 
+        .emsg { 
+          color: #c12020;
+          font-weight: bold;
+        }
+
         #data {
           display: flex;
           flex-direction: column;
@@ -99,7 +104,18 @@
           element.innerText = value
         }
 
-        function showResults(result) {
+        function showResults(response) {
+          let result = []
+          let errorDiv = document.getElementById('cname')
+          if (response.error) {
+            errorDiv.innerHTML = response.error
+            errorDiv.display = 'flex'
+          } else {
+            errorDiv.display = 'none'
+          }
+          if (response.result) {
+            result = response.result
+          }
           let col = ['pubkey', 'npub'];
           for (let i = 0; i < result.length; i++) {
             for (let key in result[i].metadata) {
@@ -146,6 +162,7 @@
 
         <form name="search" onsubmit="return makeSearch(event)" >
           <input type="text" id="search" name="search"><button type="submit">Search</button>
+          <div id="cname" class="emsg"></div>
         </form>
 
         <div id="data"></div>

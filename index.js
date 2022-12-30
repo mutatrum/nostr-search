@@ -115,26 +115,34 @@ const requestListener = function (req, res) {
     const key = url.searchParams.get('search')
     if (key) {
       res.setHeader("Content-Type", "application/json")
-      res.writeHead(200)
       if (key in STORAGE) {
-        res.write("[")
+        res.writeHead(200)
+        res.write('{"result":[')
         res.write(formatResult(key))
-        res.write("]")
+        res.write(']}')
         res.end();
         return
       }
       const pubkey = npubtopubkey(key)
       if (pubkey && pubkey in STORAGE) {
-        res.write("[")
+        res.writeHead(200)
+        res.write('{"result":[')
         res.write(formatResult(pubkey))
-        res.write("]")
+        res.write(']}')
         res.end();
         return
       }
 
       const start = Date.now()
-      indexWorker.once('message', ({result}) => {
-        res.write("[")
+      indexWorker.once('message', ({error, result}) => {
+        if (error) {
+          res.writeHead(400)
+          res.write(JSON.stringify({error: error}))
+          res.end();
+          return
+        }
+        res.writeHead(200)
+        res.write('{"result":[')
         let count = 0
         for (var entry of result) {
           let pubkey = entry.ref
@@ -143,8 +151,7 @@ const requestListener = function (req, res) {
           count++
           if (count === 100) break
         }
-        res.write("]")
-       
+        res.write(']}')
         res.end();
 
         console.log(`Search: "${key}" yields ${count} results in ${Date.now() - start}ms`)

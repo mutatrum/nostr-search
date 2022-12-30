@@ -52,7 +52,11 @@ console.log(`Building index with ${Object.keys(storage).length} keys took ${Date
 
 parentPort.on('message', ({type, key}) => {
   if (type === 'search') {
-    parentPort.postMessage({result: idx.search(key)})
+    try {
+      parentPort.postMessage({result: idx.search(key)})
+    } catch(error) {
+      parentPort.postMessage({error: error.message})
+    }
   }
   if (type === 'exit') {
     parentPort.removeAllListeners()
