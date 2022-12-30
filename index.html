@@ -109,9 +109,9 @@
           let errorDiv = document.getElementById('cname')
           if (response.error) {
             errorDiv.innerHTML = response.error
-            errorDiv.display = 'flex'
+            errorDiv.style.display = 'flex'
           } else {
-            errorDiv.display = 'none'
+            errorDiv.style.display = 'none'
           }
           if (response.result) {
             result = response.result
