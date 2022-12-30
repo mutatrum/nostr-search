@@ -2,74 +2,66 @@ const dotenv = require('dotenv');
 dotenv.config();
 
 const http = require("http");
+const https = require("https");
 const fs = require('fs').promises;
 const { RelayPool } = require('nostr');
 const { pubkeytonpub, npubtopubkey } = require('./npub')
-
-const relays = process.env.RELAYS.split(',')
-const pool = RelayPool(relays)
+const { Worker } = require('worker_threads')
 
 const HOST = process.env.HOST
 const PORT = process.env.PORT
-
 const STORAGE = {}
-var updates = 0
-var indexDate = Date.now()
 
-const { Worker } = require('worker_threads')
-
+let updates = 0
+let indexDate = Date.now()
 let indexWorker = null
+let isCreatingNewIndex = true
 
-var isCreatingNewIndex = true
+https.get('https://nostr.watch/relays.json', (resp) => {
+  let data = '';
+  resp.on('data', (chunk) => data += chunk);
+  resp.on('end', () => createPool(JSON.parse(data).relays));
+}).on('error', (err) => console.log("Error: " + err.message));
 
-pool.on('open', relay => {
-  console.log(`Open ${JSON.stringify(relay.url)}`)
-  relay.subscribe("subid", {kinds:[0]})
-});
+function createPool(relays) {
+  const pool = RelayPool(relays)
+  
+  pool.on('open', relay => {
+    console.log(`Open ${JSON.stringify(relay.url)}`)
+    relay.subscribe("subid", {kinds:[0]})
+  });
+  
+  pool.on('eose', relay => {
+    console.log(`Close ${JSON.stringify(relay.url)}`)
+    relay.close()
+  });
+  
+  pool.on('event', (relay, sub_id, event) => {
+    const pubkey = event.pubkey
+  
+    const previousEvent = STORAGE[pubkey]
+    if (previousEvent && previousEvent.created_at >= event.created_at) {
+      return
+    }
+    try {
+  
+      STORAGE[pubkey] = {created_at: event.created_at, metadata: JSON.parse(event.content)}
+  
+      updates++
+    } catch(syntaxError) {
+      // console.log(event.content)
+    }
+  });
 
-pool.on('eose', relay => {
-  console.log(`Close ${JSON.stringify(relay.url)}`)
-  relay.close()
-});
-
-pool.on('event', (relay, sub_id, event) => {
-  const pubkey = event.pubkey
-
-  const previousEvent = STORAGE[pubkey]
-  if (previousEvent && previousEvent.created_at > event.created_at) {
-    return
-  }
-  try {
-
-    STORAGE[pubkey] = JSON.parse(event.content);
-
-    updates++
-  } catch(syntaxError) {
-    // console.log(event.content)
-  }
-});
+  setInterval(() => pool.send(JSON.stringify({ event: "ping" })), 10000)
+}
 
 setInterval(() => {
-  var indexAge = Date.now() - indexDate
-  // console.log(`Index age: ${indexAge}ms, updates: ${updates}`)
   if (isCreatingNewIndex) return
+  let indexAge = Date.now() - indexDate
+  console.log(`Index age: ${indexAge}ms, updates: ${updates}`)
   if ((Date.now() - indexDate > process.env.REBUILD) || (updates > 100)) createNewIndexWorker()
 }, 1000)
-
-setInterval(() => pool.send(JSON.stringify({ event: "ping" })), 10000)
-
-fs.readFile(__dirname + "/index.html")
-    .then(contents => {
-        indexFile = contents;
-        server.listen(PORT, HOST, () => {
-            console.log(`Server is running on http://${HOST}:${PORT}`);
-        });
-    })
-    .catch(err => {
-        console.error(`Could not read index.html file: ${err}`);
-        process.exit(1);
-    });
-
 
 function createNewIndexWorker() {
   isCreatingNewIndex = true
@@ -98,6 +90,18 @@ function createNewIndexWorker() {
   })
 }
 
+fs.readFile(__dirname + "/index.html")
+    .then(contents => {
+        indexFile = contents;
+        server.listen(PORT, HOST, () => {
+            console.log(`Server is running on http://${HOST}:${PORT}`);
+        });
+    })
+    .catch(err => {
+        console.error(`Could not read index.html file: ${err}`);
+        process.exit(1);
+    });
+
 const requestListener = function (req, res) {
   console.log(`${req.method} ${req.url}`)
   const url = new URL(req.url, `https://${HOST}/`)
@@ -114,7 +118,7 @@ const requestListener = function (req, res) {
       res.writeHead(200)
       if (key in STORAGE) {
         res.write("[")
-        res.write(output(key))
+        res.write(formatResult(key))
         res.write("]")
         res.end();
         return
@@ -122,7 +126,7 @@ const requestListener = function (req, res) {
       const pubkey = npubtopubkey(key)
       if (pubkey && pubkey in STORAGE) {
         res.write("[")
-        res.write(output(pubkey))
+        res.write(formatResult(pubkey))
         res.write("]")
         res.end();
         return
@@ -131,11 +135,11 @@ const requestListener = function (req, res) {
       const start = Date.now()
       indexWorker.once('message', ({result}) => {
         res.write("[")
-        var count = 0
+        let count = 0
         for (var entry of result) {
-          var pubkey = entry.ref
+          let pubkey = entry.ref
           if (count != 0) res.write(",")
-          res.write(output(pubkey))
+          res.write(formatResult(pubkey))
           count++
           if (count === 100) break
         }
@@ -154,8 +158,8 @@ const requestListener = function (req, res) {
   res.writeHead(404).end();
 };
 
-function output(pubkey) {
-  return JSON.stringify({pubkey: pubkey, npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey] })
+function formatResult(pubkey) {
+  return JSON.stringify({pubkey: pubkey, npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey].metadata })
 }
 
 createNewIndexWorker()

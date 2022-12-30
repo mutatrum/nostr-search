@@ -1,11 +1,12 @@
 const lunr = require('lunr')
+const fs = require('fs')
 
 const { parentPort, workerData } = require('worker_threads')
 const { storage } = workerData
 
-var filterImageData = function (builder) {
-  var pipelineFunction = function (token) {
-    var t = token.toString()
+let filterImageData = function (builder) {
+  let pipelineFunction = function (token) {
+    let t = token.toString()
     if (t.startsWith("data:image/")) {
       return token.update(function () { return t.substring(0, t.indexOf(','))})
     } else {
@@ -21,11 +22,13 @@ var filterImageData = function (builder) {
   builder.pipeline.before(lunr.stemmer, pipelineFunction)
 }
 
-const start = Date.now()
+let start = Date.now()
 
-var columns = ['pubkey']
+// fs.writeFileSync('storage.json', JSON.stringify(storage))
+
+let columns = ['pubkey']
 for (var pubkey in storage) {
-  const metadata = storage[pubkey]
+  let metadata = storage[pubkey].metadata
   for (var key of Object.keys(metadata)) {
     if (columns.indexOf(key) === -1) {
       columns.push(key)
@@ -33,13 +36,13 @@ for (var pubkey in storage) {
   }
 }
 
-var idx = lunr(function() {
+let idx = lunr(function() {
   // this.tokenizer.separator = '/[\s\-]+/'
   this.use(filterImageData)
   this.ref('pubkey')
   for (var key of columns) this.field(key)
   for (var pubkey in storage) {
-    const metadata = storage[pubkey]
+    let metadata = storage[pubkey].metadata
     metadata.pubkey = pubkey
     this.add(metadata)
   }
