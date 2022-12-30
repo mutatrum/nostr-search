@@ -74,8 +74,10 @@ function createNewWorker() {
     isCreatingNewIndex = false
 
     if (prevWorker) {
+      prevWorker.removeAllListeners()
       prevWorker.postMessage({type: 'exit'})
       prevWorker.unref()
+      prevWorker.terminate()
     }
   })
 }
@@ -139,17 +141,6 @@ const requestListener = function (req, res) {
   }
   res.writeHead(404).end();
 };
-
-function fromHexString(str) {
-  if (str.length % 2 !== 0 || !/^[0-9a-f]+$/i.test(str)) {
-    return null;
-  }
-  let buffer = new Uint8Array(str.length / 2);
-  for (let i = 0; i < buffer.length; i++) {
-    buffer[i] = parseInt(str.substr(2 * i, 2), 16);
-  }
-  return buffer;
-}
 
 const server = http.createServer(requestListener);
 
