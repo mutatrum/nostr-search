@@ -1,16 +1,7 @@
-const { randomUUID } = require('crypto')
 const lunr = require('lunr')
 
 const { parentPort, workerData } = require('worker_threads')
 const { storage } = workerData
-
-const workerId = randomUUID()
-
-setInterval(() => {
-  console.log(`Worker ${workerId}`)
-}, 10000)
-
-console.log(workerId)
 
 var filterImageData = function (builder) {
   var pipelineFunction = function (token) {
