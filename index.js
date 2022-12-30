@@ -59,7 +59,7 @@ function createPool(relays) {
 setInterval(() => {
   if (isCreatingNewIndex) return
   let indexAge = Date.now() - indexDate
-  console.log(`Index age: ${indexAge}ms, updates: ${updates}`)
+  // console.log(`Index age: ${indexAge / 1000} src, updates: ${updates}`)
   if ((Date.now() - indexDate > process.env.REBUILD) || (updates > 100)) createNewIndexWorker()
 }, 1000)
 
