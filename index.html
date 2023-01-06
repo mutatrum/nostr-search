@@ -88,20 +88,14 @@
             return
           }
           if (column === 'picture') {
-            try {
-              var img = document.createElement("img")
-              img.setAttribute("src", value)
-              element.append(img)
-              return
-            } catch(error) {
-
-            }           
-          }
-          if (value.length > 100) {
-            element.innerText = `${value.substring(0, 100)}...`
+            var img = document.createElement("img")
+            img.setAttribute("src", value)
+            element.append(img)
             return
           }
-          element.innerText = value
+          var p = document.createElement("p")
+          p.textContent = value.length > 100 ? `${value.substring(0, 100)} ...` : value
+          element.append(p)
         }
 
         function showResults(response) {
@@ -116,7 +110,7 @@
           if (response.result) {
             result = response.result
           }
-          let col = ['pubkey', 'npub'];
+          let col = ['npub'];
           for (let i = 0; i < result.length; i++) {
             for (let key in result[i].metadata) {
               if (col.indexOf(key) === -1) {
@@ -138,10 +132,9 @@
 
             tr = table.insertRow(-1);
 
-            tr.insertCell(-1).innerText = result[i].pubkey
             tr.insertCell(-1).innerText = result[i].npub
 
-            for (let j = 2; j < col.length; j++) {
+            for (let j = 1; j < col.length; j++) {
               let tabCell = tr.insertCell(-1);
               let value = result[i].metadata[col[j]];
               renderValue(tabCell, col[j], value)

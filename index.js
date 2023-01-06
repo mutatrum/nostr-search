@@ -166,7 +166,7 @@ const requestListener = function (req, res) {
 };
 
 function formatResult(pubkey) {
-  return JSON.stringify({pubkey: pubkey, npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey].metadata })
+  return JSON.stringify({npub: pubkeytonpub(pubkey), metadata: STORAGE[pubkey].metadata })
 }
 
 createNewIndexWorker()
